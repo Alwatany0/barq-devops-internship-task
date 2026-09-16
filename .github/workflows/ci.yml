@@ -1,0 +1,59 @@
+name: BARQ CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-test-password
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax
+        run: python3 -m py_compile app/server.py validate.py failure_test.py
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config
+
+      - name: Build application image
+        run: docker compose build
+
+      - name: Start environment
+        run: docker compose up -d
+
+      - name: Wait for application readiness
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8080/ready; then
+              echo
+              echo "Environment is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Environment did not become ready."
+          docker compose ps
+          docker compose logs --no-color
+          exit 1
+
+      - name: Run environment validation
+        run: python3 validate.py
+
+      - name: Collect diagnostics on failure
+        if: failure()
+        run: docker compose ps && docker compose logs --no-color
+
+      - name: Stop environment
+        if: always()
+        run: docker compose down -v
