@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       POSTGRES_PASSWORD: ci-test-password
+      PUBLIC_PORT: "8090"
 
     steps:
       - name: Checkout repository
@@ -35,7 +36,7 @@ jobs:
       - name: Wait for application readiness
         run: |
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8080/ready; then
+            if curl --fail --silent http://127.0.0.1:8090/ready; then
               echo
               echo "Environment is ready."
               exit 0

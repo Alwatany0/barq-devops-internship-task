@@ -64,11 +64,11 @@ This review covers the security and production-readiness of the final solution. 
 
 ## 8. Availability and single points of failure
 
-* **Risk and evidence:** The application layer has two instances behind NGINX, but NGINX, PostgreSQL, and Redis are each represented by a single container in this assessment environment.
-* **Impact:** Failure of one of the single-instance services can still affect the whole application.
-* **Implemented fix / commit:** Two application instances and NGINX upstream failover were implemented. The failure test stopped `app-01` and verified that traffic continued through `app-02`. Commit `25bdd3d`.
+* **Risk and evidence:** The final application layer has three instances behind NGINX, while NGINX, PostgreSQL, and Redis are each represented by a single container in this assessment environment.
+* **Impact:** Failure of one application instance can be handled by the remaining instances, but failure of one of the single-instance infrastructure services can still affect the whole application.
+* **Implemented fix / commit:** Three application instances (`app-01`, `app-02`, and `app-03`) are configured behind the NGINX upstream. The failure test stops `app-01` and verifies that traffic continues through a surviving backend, followed by recovery of the stopped instance.
 * **Production follow-up:** Use redundant load balancers, highly available database infrastructure, and an appropriate Redis deployment if these components are required to remain available during individual failures.
-* **How to verify:** Stop one application instance and send requests through NGINX. Confirm traffic continues and that the recovered instance receives traffic again.
+* **How to verify:** Stop one application instance and send requests through NGINX. Confirm traffic continues through a surviving backend and that the recovered instance receives traffic again.
 
 ## 9. Dependency timeouts and failure handling
 

@@ -8,7 +8,7 @@ import time
 import urllib.error
 import urllib.request
 
-PUBLIC_PORT = int(os.getenv("PUBLIC_PORT", "8080"))
+PUBLIC_PORT = int(os.getenv("PUBLIC_PORT", "8090"))
 BASE_URL = f"http://127.0.0.1:{PUBLIC_PORT}"
 TARGET = "app-01"
 REQUESTS_DURING_FAILURE = 20
@@ -62,11 +62,11 @@ def main():
     print(f"Public URL: {BASE_URL}")
     print(f"Target backend: {TARGET}")
 
-    if not container_healthy("app-01") or not container_healthy("app-02"):
-        print("FAIL: both application instances must be healthy before the test")
+    if not all(container_healthy(name) for name in ("app-01", "app-02", "app-03")):
+        print("FAIL: all three application instances must be healthy before the test")
         return 1
 
-    print("PASS: both application instances are healthy before failure")
+    print("PASS: all three application instances are healthy before failure")
 
     stopped = False
 
@@ -109,8 +109,8 @@ def main():
             print("FAIL: no traffic was served while one backend was stopped")
             return 1
 
-        if "app-02" not in instances:
-            print("FAIL: surviving app-02 did not serve traffic")
+        if not ({"app-02", "app-03"} & instances):
+            print("FAIL: neither surviving backend served traffic")
             return 1
 
         print("PASS: traffic continued through the surviving backend")
@@ -147,11 +147,11 @@ def main():
     print("--- Recovery verification ---")
     print(f"Instances observed after recovery: {sorted(recovered_instances)}")
 
-    if not {"app-01", "app-02"}.issubset(recovered_instances):
-        print("FAIL: both application instances were not observed after recovery")
+    if not {"app-01", "app-02", "app-03"}.issubset(recovered_instances):
+        print("FAIL: all three application instances were not observed after recovery")
         return 1
 
-    print("PASS: both application instances serve traffic after recovery")
+    print("PASS: all three application instances serve traffic after recovery")
     print("=== FAILURE / RECOVERY TEST PASSED ===")
     return 0
 

@@ -71,3 +71,12 @@
 * **Trade-off:** A fixed timeout can fail when a system is temporarily slow, but it makes the test predictable.
 * **Evidence / commit:** `352eb86`.
 * **Production improvement:** Tune the timeout based on real service startup and response times and expose validation results through monitoring.
+
+## 9. Final public port and third application instance
+
+* **Choice:** Move the public NGINX port from `8080` to `8090` and add `app-03` to the application pool.
+* **Why:** The assessment requires the final submitted architecture to use three application instances behind NGINX on public port `8090`. The application containers continue using their internal port `8080`.
+* **Alternative:** Keep two application instances on public port `8080`.
+* **Trade-off:** A third application instance provides another backend target, while changing the public port requires updating local configuration, validation, CI and documentation.
+* **Evidence / commit:** Final technical commit containing the Compose, NGINX, validation and failure-test changes.
+* **Production improvement:** Use a managed load balancer or orchestrator for scalable application replicas and manage public endpoints through deployment configuration rather than local Compose variables.

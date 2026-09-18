@@ -20,7 +20,7 @@ The setup uses:
 * Redis 7
 * Linux/WSL2 or Docker Desktop with Linux containers
 
-Make sure ports `8080` and `8090` are available when needed.
+The final public port is `8090`. The internal Flask application port remains `8080`.
 
 ## Project structure
 
@@ -58,7 +58,7 @@ cp .env.example .env
 The default configuration uses:
 
 ```env
-PUBLIC_PORT=8080
+PUBLIC_PORT=8090
 POSTGRES_PASSWORD=change-me
 ```
 
@@ -84,6 +84,7 @@ The expected services are:
 ```text
 app-01
 app-02
+app-03
 nginx
 postgres
 redis
@@ -92,7 +93,7 @@ redis
 Only NGINX publishes a host port:
 
 ```text
-127.0.0.1:8080 -> nginx:80
+127.0.0.1:8090 -> nginx:80
 ```
 
 The application, PostgreSQL, and Redis ports are not published to the host.
@@ -102,7 +103,7 @@ The application, PostgreSQL, and Redis ports are not published to the host.
 The public API is available at:
 
 ```text
-http://127.0.0.1:8080
+http://127.0.0.1:8090
 ```
 
 The available endpoints are:
@@ -119,12 +120,12 @@ The available endpoints are:
 For example:
 
 ```bash
-curl http://127.0.0.1:8080/
-curl http://127.0.0.1:8080/health
-curl http://127.0.0.1:8080/ready
-curl http://127.0.0.1:8080/instance
-curl http://127.0.0.1:8080/records
-curl http://127.0.0.1:8080/counter
+curl http://127.0.0.1:8090/
+curl http://127.0.0.1:8090/health
+curl http://127.0.0.1:8090/ready
+curl http://127.0.0.1:8090/instance
+curl http://127.0.0.1:8090/records
+curl http://127.0.0.1:8090/counter
 ```
 
 To check all endpoints at once:
@@ -132,28 +133,29 @@ To check all endpoints at once:
 ```bash
 for path in / /health /ready /instance /records /counter; do
     curl -s -o /dev/null -w "$path -> HTTP %{http_code}\n" \
-        "http://127.0.0.1:8080$path"
+        "http://127.0.0.1:8090$path"
 done
 ```
 
 ## Load balancing
 
-NGINX sends requests to both application instances.
+NGINX sends requests across all three application instances.
 
 Run:
 
 ```bash
 for i in {1..10}; do
-    curl -s http://127.0.0.1:8080/instance
+    curl -s http://127.0.0.1:8090/instance
     echo
 done
 ```
 
-The responses should show both:
+The responses should show all three:
 
 ```text
 app-01
 app-02
+app-03
 ```
 
 The application containers communicate with PostgreSQL and Redis using their Docker service names rather than container IP addresses.
@@ -165,17 +167,17 @@ The request flow is:
 ```text
 Client
    |
-   | HTTP :8080
+   | HTTP :8090
    v
-NGINX
+NGINX :80
    |
    +----> app-01:8080
-   |
    +----> app-02:8080
-             |
-             +----> PostgreSQL:5432
-             |
-             +----> Redis:6379
+   +----> app-03:8080
+              |
+              +----> PostgreSQL:5432
+              |
+              +----> Redis:6379
 ```
 
 NGINX is the only service exposed to the host. The application containers are connected to both the frontend and backend Docker networks. PostgreSQL and Redis are only connected to the backend network.
@@ -231,11 +233,11 @@ python3 failure_test.py
 
 The test verifies that:
 
-1. Both instances are healthy before the test.
+1. All three instances are healthy before the test.
 2. One application instance is stopped.
 3. Requests continue through the surviving instance.
 4. The failed instance is started again.
-5. Both instances receive traffic after recovery.
+5. All three instances receive traffic after recovery.
 
 The test uses `docker compose stop/start` and does not remove the database volumes.
 
@@ -284,7 +286,7 @@ PostgreSQL uses a named Docker volume.
 A simple persistence test is:
 
 ```bash
-curl -s -X POST http://127.0.0.1:8080/records \
+curl -s -X POST http://127.0.0.1:8090/records \
     -H 'Content-Type: application/json' \
     -d '{"title":"Persistence verification record"}'
 ```
@@ -292,13 +294,13 @@ curl -s -X POST http://127.0.0.1:8080/records \
 Then recreate the application and PostgreSQL containers without removing the volume:
 
 ```bash
-docker compose up -d --force-recreate app-01 app-02 postgres
+docker compose up -d --force-recreate app-01 app-02 app-03 postgres
 ```
 
 Wait for the services to become healthy and check:
 
 ```bash
-curl http://127.0.0.1:8080/records
+curl http://127.0.0.1:8090/records
 ```
 
 The previously created record should still exist.

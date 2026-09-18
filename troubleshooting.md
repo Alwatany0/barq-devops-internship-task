@@ -113,3 +113,15 @@
 * **Retest evidence:** The current CI run is green.
 * **Related commit:** `efc76d1` — `ci: add automated environment validation`
 * **Remaining uncertainty:** Green CI proves the checks passed on the GitHub runner. It does not prove production-scale reliability.
+
+## Entry 9 — Final three-instance / 8090 state
+
+* **Symptom:** After the recorded challenge attempt, the final assessment state had to match the required three-instance architecture on public port `8090`.
+* **Investigation:** The running environment was inspected with `docker compose ps`, endpoint requests, repeated `/instance` requests, and the validation script.
+* **Actual findings:** The final environment contained healthy `app-01`, `app-02`, `app-03`, `nginx`, `postgres`, and `redis`. NGINX published `127.0.0.1:8090 -> 80`. Repeated `/instance` requests through NGINX observed all three application instances.
+* **Failed attempt and what changed my thinking:** The first final validation run passed the endpoint, health, port, and network checks but failed the load-balancing check because the running NGINX container had not yet loaded the new `app-03` upstream configuration. Recreating only NGINX loaded the updated configuration.
+* **Additional configuration issue:** The Compose file used `PUBLIC_PORT=8090` as its default, but the local `.env` still explicitly contained `PUBLIC_PORT=8080`. Updating the local environment value to `8090` made the resolved Compose configuration match the final architecture.
+* **Fix:** Added `app-03` to the Compose services and NGINX upstream, updated NGINX dependencies, changed the final public port to `8090`, and updated `validate.py` and `failure_test.py` for three application instances.
+* **Retest evidence:** Final endpoint checks returned HTTP 200. Repeated `/instance` requests observed `app-01`, `app-02`, and `app-03`. `validate.py` completed successfully and `failure_test.py` completed successfully.
+* **Challenge evidence limitation:** The recorded `./video_challenge.sh` attempt stopped during preflight before the runtime fault was injected, so no challenge receipt was generated. The challenge was not rerun or reset afterward.
+* **Related changes:** Final working-tree changes to `docker-compose.yml`, `nginx/nginx.conf`, `validate.py`, and `failure_test.py`.

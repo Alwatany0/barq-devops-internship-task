@@ -8,7 +8,7 @@ import sys
 import urllib.error
 import urllib.request
 
-PUBLIC_PORT = os.getenv("PUBLIC_PORT", "8080")
+PUBLIC_PORT = os.getenv("PUBLIC_PORT", "8090")
 BASE_URL = f"http://127.0.0.1:{PUBLIC_PORT}"
 TIMEOUT = 5
 
@@ -71,7 +71,7 @@ for path in ("/", "/health", "/ready", "/instance", "/records", "/counter"):
         f"HTTP {status}" if status is not None else body,
     )
 
-# 2. Prove both application instances are reachable through NGINX.
+# 2. Prove all application instances are reachable through NGINX.
 print()
 print("--- Load balancing ---")
 
@@ -90,7 +90,7 @@ for _ in range(10):
 
 check(
     "Both application instances receive traffic",
-    {"app-01", "app-02"}.issubset(instances),
+    {"app-01", "app-02", "app-03"}.issubset(instances),
     f"Observed instances: {sorted(instances)}",
 )
 
@@ -102,7 +102,7 @@ returncode, stdout, stderr = run_command(
     ["docker", "compose", "ps", "--format", "{{.Name}}\t{{.Status}}"]
 )
 
-expected_containers = {"app-01", "app-02", "nginx", "postgres", "redis"}
+expected_containers = {"app-01", "app-02", "app-03", "nginx", "postgres", "redis"}
 
 if returncode == 0:
     lines = stdout.splitlines()
@@ -170,7 +170,7 @@ if returncode == 0:
         nginx_ports or "no published port",
     )
 
-    for container in ("app-01", "app-02", "postgres", "redis"):
+    for container in ("app-01", "app-02", "app-03", "postgres", "redis"):
         ports = port_map.get(container, "")
         check(
             f"{container} has no host-published port",
@@ -199,7 +199,7 @@ frontend_members = set(stdout.split()) if returncode == 0 else set()
 
 check(
     "Frontend contains NGINX and both app instances",
-    {"nginx", "app-01", "app-02"}.issubset(frontend_members),
+    {"nginx", "app-01", "app-02", "app-03"}.issubset(frontend_members),
     f"Members: {sorted(frontend_members)}",
 )
 
@@ -224,7 +224,7 @@ backend_members = set(stdout.split()) if returncode == 0 else set()
 
 check(
     "Backend contains both app instances, PostgreSQL and Redis",
-    {"app-01", "app-02", "postgres", "redis"}.issubset(backend_members),
+    {"app-01", "app-02","app-03", "postgres", "redis"}.issubset(backend_members),
     f"Members: {sorted(backend_members)}",
 )
 
